@@ -2,9 +2,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Car } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, profile, signOut } = useAuth();
+
+  const getAppLink = () => {
+    if (!user) return "/auth";
+    if (profile?.user_type === "driver") return "/driver";
+    return "/client";
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
@@ -38,16 +46,31 @@ const Header = () => {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/driver">
-              <Button variant="outline" size="default">
-                للسائقين
-              </Button>
-            </Link>
-            <Link to="/client">
-              <Button variant="default" size="default">
-                احجز الآن
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <Link to={getAppLink()}>
+                  <Button variant="default" size="default">
+                    {profile?.user_type === "driver" ? "لوحة السائق" : "احجز طاكسي"}
+                  </Button>
+                </Link>
+                <Button variant="outline" size="default" onClick={() => signOut()}>
+                  خروج
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="outline" size="default">
+                    تسجيل الدخول
+                  </Button>
+                </Link>
+                <Link to="/auth">
+                  <Button variant="default" size="default">
+                    سجل الآن
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -92,16 +115,31 @@ const Header = () => {
                 تواصل معنا
               </a>
               <div className="flex flex-col gap-2 pt-4">
-                <Link to="/driver">
-                  <Button variant="outline" className="w-full">
-                    للسائقين
-                  </Button>
-                </Link>
-                <Link to="/client">
-                  <Button variant="default" className="w-full">
-                    احجز الآن
-                  </Button>
-                </Link>
+                {user ? (
+                  <>
+                    <Link to={getAppLink()}>
+                      <Button variant="default" className="w-full">
+                        {profile?.user_type === "driver" ? "لوحة السائق" : "احجز طاكسي"}
+                      </Button>
+                    </Link>
+                    <Button variant="outline" className="w-full" onClick={() => signOut()}>
+                      خروج
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/auth">
+                      <Button variant="outline" className="w-full">
+                        تسجيل الدخول
+                      </Button>
+                    </Link>
+                    <Link to="/auth">
+                      <Button variant="default" className="w-full">
+                        سجل الآن
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </nav>
           </div>
