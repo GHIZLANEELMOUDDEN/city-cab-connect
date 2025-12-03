@@ -18,18 +18,26 @@ import {
   Phone,
   MessageCircle
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const DriverApp = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [activeTab, setActiveTab] = useState("home");
   const [hasRequest, setHasRequest] = useState(true);
+  const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const stats = {
     todayTrips: 12,
     todayEarnings: "340 درهم",
-    rating: 4.8,
-    monthlyTrips: 245,
+    rating: profile?.rating || 4.8,
+    monthlyTrips: profile?.total_trips || 245,
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
   };
 
   return (
@@ -42,8 +50,8 @@ const DriverApp = () => {
               <User className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <div className="font-bold">محمد أمين</div>
-              <div className="text-sm text-secondary-foreground/70">A-1234</div>
+              <div className="font-bold">{profile?.full_name || "سائق"}</div>
+              <div className="text-sm text-secondary-foreground/70">{profile?.taxi_number || "A-XXXX"}</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -195,7 +203,7 @@ const DriverApp = () => {
             </div>
             <div className="text-left">
               <div className="text-secondary-foreground/70">الحالة</div>
-              <div className="font-medium text-accent">مفعّل</div>
+              <div className="font-medium text-accent">{profile?.is_active ? "مفعّل" : "غير مفعّل"}</div>
             </div>
           </div>
         </div>
@@ -253,13 +261,13 @@ const DriverApp = () => {
             <Wallet className="w-6 h-6" />
             <span className="text-xs">المحفظة</span>
           </button>
-          <Link 
-            to="/"
+          <button 
+            onClick={handleSignOut}
             className="flex flex-col items-center gap-1 p-2 text-muted-foreground"
           >
             <LogOut className="w-6 h-6" />
             <span className="text-xs">خروج</span>
-          </Link>
+          </button>
         </div>
       </nav>
     </div>

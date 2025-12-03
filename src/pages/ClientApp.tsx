@@ -16,7 +16,8 @@ import {
   HelpCircle,
   LogOut
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const nearbyTaxis = [
   { id: 1, name: "محمد أمين", rating: 4.9, distance: "2 دقائق", taxiNumber: "A-1234", trips: 1520 },
@@ -27,6 +28,13 @@ const nearbyTaxis = [
 const ClientApp = () => {
   const [selectedTaxi, setSelectedTaxi] = useState<number | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -66,8 +74,8 @@ const ClientApp = () => {
                   <User className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <div className="font-semibold">أهلاً بك</div>
-                  <div className="text-sm text-muted-foreground">user@example.com</div>
+                  <div className="font-semibold">{profile?.full_name || "مستخدم"}</div>
+                  <div className="text-sm text-muted-foreground">{user?.email}</div>
                 </div>
               </div>
             </div>
@@ -85,10 +93,13 @@ const ClientApp = () => {
                 <span>المساعدة</span>
               </a>
               <div className="border-t border-border my-4" />
-              <Link to="/" className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors text-destructive">
+              <button 
+                onClick={handleSignOut}
+                className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors text-destructive w-full"
+              >
                 <LogOut className="w-5 h-5" />
                 <span>تسجيل الخروج</span>
-              </Link>
+              </button>
             </nav>
           </div>
         </div>
