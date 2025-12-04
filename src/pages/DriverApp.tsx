@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Car,
@@ -16,10 +16,13 @@ import {
   XCircle,
   Navigation,
   Phone,
-  MessageCircle
+  MessageCircle,
+  Locate
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import LeafletMap from "@/components/map/LeafletMap";
+import { useGeoLocation } from "@/hooks/useGeoLocation";
 
 const DriverApp = () => {
   const [isOnline, setIsOnline] = useState(true);
@@ -27,6 +30,7 @@ const DriverApp = () => {
   const [hasRequest, setHasRequest] = useState(true);
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const { latitude, longitude, loading, error, refresh } = useGeoLocation();
 
   const stats = {
     todayTrips: 12,
@@ -39,6 +43,112 @@ const DriverApp = () => {
     await signOut();
     navigate("/");
   };
+
+  const userLocation = useMemo(() => {
+    if (latitude && longitude) {
+      return { latitude, longitude };
+    }
+    return null;
+  }, [latitude, longitude]);
+
+  const mapCenter = useMemo((): [number, number] => {
+    if (latitude && longitude) {
+      return [latitude, longitude];
+    }
+    return [33.5731, -7.5898]; // Default to Casablanca
+  }, [latitude, longitude]);
+
+  // Sample customer location for the request
+  const customerMarker = useMemo(() => {
+    if (!hasRequest) return [];
+    return [{
+      id: "customer",
+      latitude: 33.5751,
+      longitude: -7.5878,
+      type: "destination" as const,
+      label: "أحمد الزهراوي - شارع الحسن الثاني",
+    }];
+  }, [hasRequest]);
+
+  if (activeTab === "map") {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        {/* Map View */}
+        <div className="h-[calc(100vh-80px)] relative">
+          <LeafletMap
+            center={mapCenter}
+            zoom={15}
+            markers={customerMarker}
+            userLocation={userLocation}
+            className="w-full h-full"
+          />
+
+          {/* Back button */}
+          <button 
+            onClick={() => setActiveTab("home")}
+            className="absolute top-4 right-4 z-[1000] w-12 h-12 bg-card rounded-full shadow-card flex items-center justify-center"
+          >
+            <Navigation className="w-5 h-5 text-primary" />
+          </button>
+
+          {/* My Location Button */}
+          <button 
+            onClick={refresh}
+            className="absolute bottom-4 right-4 z-[1000] w-12 h-12 bg-card rounded-full shadow-card flex items-center justify-center hover:bg-muted transition-colors"
+          >
+            <Locate className={`w-5 h-5 text-accent ${loading ? "animate-pulse" : ""}`} />
+          </button>
+
+          {/* Online status */}
+          <div className="absolute top-4 left-4 z-[1000] bg-card rounded-full shadow-card px-4 py-2 flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${isOnline ? "bg-accent animate-pulse" : "bg-muted-foreground"}`} />
+            <span className="text-sm font-medium">{isOnline ? "متصل" : "غير متصل"}</span>
+          </div>
+
+          {/* GPS Error */}
+          {error && (
+            <div className="absolute bottom-20 left-4 right-4 z-[1000] bg-destructive/90 text-destructive-foreground text-sm p-3 rounded-xl">
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border">
+          <div className="flex items-center justify-around h-16">
+            <button 
+              onClick={() => setActiveTab("home")}
+              className="flex flex-col items-center gap-1 p-2 text-muted-foreground"
+            >
+              <Car className="w-6 h-6" />
+              <span className="text-xs">الرئيسية</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab("map")}
+              className="flex flex-col items-center gap-1 p-2 text-primary"
+            >
+              <Navigation className="w-6 h-6" />
+              <span className="text-xs">الخريطة</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab("wallet")}
+              className="flex flex-col items-center gap-1 p-2 text-muted-foreground"
+            >
+              <Wallet className="w-6 h-6" />
+              <span className="text-xs">المحفظة</span>
+            </button>
+            <button 
+              onClick={handleSignOut}
+              className="flex flex-col items-center gap-1 p-2 text-muted-foreground"
+            >
+              <LogOut className="w-6 h-6" />
+              <span className="text-xs">خروج</span>
+            </button>
+          </div>
+        </nav>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">

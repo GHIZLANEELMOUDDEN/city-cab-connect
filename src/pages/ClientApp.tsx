@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   MapPin, 
@@ -14,15 +14,18 @@ import {
   Car,
   History,
   HelpCircle,
-  LogOut
+  LogOut,
+  Locate
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import LeafletMap from "@/components/map/LeafletMap";
+import { useGeoLocation } from "@/hooks/useGeoLocation";
 
 const nearbyTaxis = [
-  { id: 1, name: "محمد أمين", rating: 4.9, distance: "2 دقائق", taxiNumber: "A-1234", trips: 1520 },
-  { id: 2, name: "كريم الحسني", rating: 4.7, distance: "4 دقائق", taxiNumber: "B-5678", trips: 890 },
-  { id: 3, name: "عبد الله", rating: 4.8, distance: "5 دقائق", taxiNumber: "C-9012", trips: 2100 },
+  { id: 1, name: "محمد أمين", rating: 4.9, distance: "2 دقائق", taxiNumber: "A-1234", trips: 1520, lat: 33.5751, lng: -7.5878 },
+  { id: 2, name: "كريم الحسني", rating: 4.7, distance: "4 دقائق", taxiNumber: "B-5678", trips: 890, lat: 33.5711, lng: -7.5918 },
+  { id: 3, name: "عبد الله", rating: 4.8, distance: "5 دقائق", taxiNumber: "C-9012", trips: 2100, lat: 33.5771, lng: -7.5858 },
 ];
 
 const ClientApp = () => {
@@ -30,11 +33,36 @@ const ClientApp = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const { latitude, longitude, loading, error, refresh } = useGeoLocation();
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
+
+  const userLocation = useMemo(() => {
+    if (latitude && longitude) {
+      return { latitude, longitude };
+    }
+    return null;
+  }, [latitude, longitude]);
+
+  const mapCenter = useMemo((): [number, number] => {
+    if (latitude && longitude) {
+      return [latitude, longitude];
+    }
+    return [33.5731, -7.5898]; // Default to Casablanca
+  }, [latitude, longitude]);
+
+  const taxiMarkers = useMemo(() => {
+    return nearbyTaxis.map((taxi) => ({
+      id: taxi.id,
+      latitude: taxi.lat,
+      longitude: taxi.lng,
+      type: "taxi" as const,
+      label: `${taxi.name} - ${taxi.taxiNumber}`,
+    }));
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -106,38 +134,17 @@ const ClientApp = () => {
       )}
 
       {/* Map Area */}
-      <div className="pt-16 h-[60vh] relative bg-gradient-to-b from-taxi-yellow-light/20 to-muted/30">
-        {/* Map Grid Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          {[...Array(10)].map((_, i) => (
-            <div key={`h-${i}`} className="absolute w-full h-px bg-foreground" style={{ top: `${i * 10}%` }} />
-          ))}
-          {[...Array(8)].map((_, i) => (
-            <div key={`v-${i}`} className="absolute h-full w-px bg-foreground" style={{ left: `${i * 14}%` }} />
-          ))}
-        </div>
-
-        {/* Taxi Markers */}
-        <div className="absolute top-1/4 left-1/4 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-glow animate-bounce-soft cursor-pointer">
-          <span className="text-xl">🚕</span>
-        </div>
-        <div className="absolute top-1/3 right-1/3 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-glow animate-bounce-soft cursor-pointer" style={{ animationDelay: "0.3s" }}>
-          <span className="text-xl">🚕</span>
-        </div>
-        <div className="absolute bottom-1/3 left-1/2 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-glow animate-bounce-soft cursor-pointer" style={{ animationDelay: "0.6s" }}>
-          <span className="text-xl">🚕</span>
-        </div>
-
-        {/* User Location */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="w-20 h-20 bg-accent/20 rounded-full animate-ping" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-accent rounded-full border-4 border-background shadow-lg flex items-center justify-center">
-            <Navigation className="w-4 h-4 text-accent-foreground" />
-          </div>
-        </div>
+      <div className="pt-16 h-[60vh] relative">
+        <LeafletMap
+          center={mapCenter}
+          zoom={15}
+          markers={taxiMarkers}
+          userLocation={userLocation}
+          className="w-full h-full"
+        />
 
         {/* Search Bar */}
-        <div className="absolute top-4 left-4 right-4">
+        <div className="absolute top-4 left-4 right-4 z-[1000]">
           <div className="bg-card rounded-2xl shadow-card p-4 flex items-center gap-3">
             <MapPin className="w-5 h-5 text-primary" />
             <input 
@@ -150,9 +157,19 @@ const ClientApp = () => {
         </div>
 
         {/* My Location Button */}
-        <button className="absolute bottom-4 right-4 w-12 h-12 bg-card rounded-full shadow-card flex items-center justify-center">
-          <Navigation className="w-5 h-5 text-accent" />
+        <button 
+          onClick={refresh}
+          className="absolute bottom-4 right-4 z-[1000] w-12 h-12 bg-card rounded-full shadow-card flex items-center justify-center hover:bg-muted transition-colors"
+        >
+          <Locate className={`w-5 h-5 text-accent ${loading ? "animate-pulse" : ""}`} />
         </button>
+
+        {/* GPS Status */}
+        {error && (
+          <div className="absolute bottom-4 left-4 right-20 z-[1000] bg-destructive/90 text-destructive-foreground text-sm p-3 rounded-xl">
+            {error}
+          </div>
+        )}
       </div>
 
       {/* Bottom Sheet - Nearby Taxis */}
