@@ -17,20 +17,23 @@ import {
   Navigation,
   Phone,
   MessageCircle,
-  Locate
+  Locate,
+  Play,
+  Flag
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LeafletMap from "@/components/map/LeafletMap";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
+import { useTrips } from "@/hooks/useTrips";
 
 const DriverApp = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [activeTab, setActiveTab] = useState("home");
-  const [hasRequest, setHasRequest] = useState(true);
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const { latitude, longitude, loading, error, refresh } = useGeoLocation();
+  const { pendingTrips, activeTrip, acceptTrip, startTrip, completeTrip, cancelTrip } = useTrips();
 
   const stats = {
     todayTrips: 12,
@@ -58,17 +61,71 @@ const DriverApp = () => {
     return [33.5731, -7.5898]; // Default to Casablanca
   }, [latitude, longitude]);
 
-  // Sample customer location for the request
-  const customerMarker = useMemo(() => {
-    if (!hasRequest) return [];
-    return [{
-      id: "customer",
-      latitude: 33.5751,
-      longitude: -7.5878,
-      type: "destination" as const,
-      label: "أحمد الزهراوي - شارع الحسن الثاني",
-    }];
-  }, [hasRequest]);
+  // Markers for pending trips and active trip
+  const tripMarkers = useMemo(() => {
+    const markers: Array<{
+      id: string;
+      latitude: number;
+      longitude: number;
+      type: "taxi" | "user" | "destination";
+      label?: string;
+    }> = [];
+
+    if (activeTrip) {
+      markers.push({
+        id: activeTrip.id,
+        latitude: Number(activeTrip.pickup_lat),
+        longitude: Number(activeTrip.pickup_lng),
+        type: "destination",
+        label: activeTrip.pickup_address,
+      });
+    } else {
+      pendingTrips.slice(0, 5).forEach((trip) => {
+        markers.push({
+          id: trip.id,
+          latitude: Number(trip.pickup_lat),
+          longitude: Number(trip.pickup_lng),
+          type: "destination",
+          label: trip.pickup_address,
+        });
+      });
+    }
+
+    return markers;
+  }, [pendingTrips, activeTrip]);
+
+  const handleAcceptTrip = async (tripId: string) => {
+    await acceptTrip(tripId);
+  };
+
+  const handleStartTrip = async () => {
+    if (activeTrip) {
+      await startTrip(activeTrip.id);
+    }
+  };
+
+  const handleCompleteTrip = async () => {
+    if (activeTrip) {
+      await completeTrip(activeTrip.id);
+    }
+  };
+
+  const handleCancelTrip = async () => {
+    if (activeTrip) {
+      await cancelTrip(activeTrip.id);
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "accepted":
+        return "اذهب لاستلام الزبون";
+      case "in_progress":
+        return "الرحلة جارية";
+      default:
+        return status;
+    }
+  };
 
   if (activeTab === "map") {
     return (
@@ -78,7 +135,7 @@ const DriverApp = () => {
           <LeafletMap
             center={mapCenter}
             zoom={15}
-            markers={customerMarker}
+            markers={tripMarkers}
             userLocation={userLocation}
             className="w-full h-full"
           />
@@ -165,9 +222,13 @@ const DriverApp = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Bell className="w-6 h-6" />
             <div className="relative">
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full" />
+              <Bell className="w-6 h-6" />
+              {pendingTrips.length > 0 && (
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-destructive rounded-full flex items-center justify-center text-xs text-destructive-foreground">
+                  {pendingTrips.length}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -189,6 +250,74 @@ const DriverApp = () => {
 
       {/* Main Content */}
       <main className="p-4">
+        {/* Active Trip Card */}
+        {activeTrip && (
+          <div className="bg-accent/10 border-2 border-accent rounded-2xl p-4 mb-6 animate-scale-in">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-3 h-3 bg-accent rounded-full animate-pulse" />
+              <span className="font-bold text-accent">{getStatusText(activeTrip.status)}</span>
+            </div>
+
+            <div className="bg-card rounded-xl p-3 mb-4">
+              <div className="flex items-start gap-3">
+                <div className="flex flex-col items-center">
+                  <div className="w-3 h-3 bg-accent rounded-full" />
+                  <div className="w-0.5 h-8 bg-border" />
+                  <div className="w-3 h-3 bg-primary rounded-full" />
+                </div>
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground">موقع الزبون</div>
+                    <div className="font-medium">{activeTrip.pickup_address}</div>
+                  </div>
+                  {activeTrip.dropoff_address && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">الوجهة</div>
+                      <div className="font-medium">{activeTrip.dropoff_address}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              {activeTrip.status === "accepted" && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={handleCancelTrip}
+                  >
+                    <XCircle className="w-5 h-5 ml-2" />
+                    إلغاء
+                  </Button>
+                  <Button 
+                    variant="accent" 
+                    size="lg" 
+                    className="flex-1"
+                    onClick={handleStartTrip}
+                  >
+                    <Play className="w-5 h-5 ml-2" />
+                    بدء الرحلة
+                  </Button>
+                </>
+              )}
+              {activeTrip.status === "in_progress" && (
+                <Button 
+                  variant="accent" 
+                  size="lg" 
+                  className="w-full"
+                  onClick={handleCompleteTrip}
+                >
+                  <Flag className="w-5 h-5 ml-2" />
+                  إنهاء الرحلة
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="bg-card rounded-2xl p-4 shadow-soft border border-border/50">
@@ -221,69 +350,72 @@ const DriverApp = () => {
           </div>
         </div>
 
-        {/* New Request Card */}
-        {hasRequest && isOnline && (
-          <div className="bg-primary/10 border-2 border-primary rounded-2xl p-4 mb-6 animate-scale-in">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-3 h-3 bg-primary rounded-full animate-ping" />
-              <span className="font-bold text-primary">طلب جديد!</span>
-            </div>
-            
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-14 h-14 bg-card rounded-full flex items-center justify-center">
-                <User className="w-7 h-7 text-muted-foreground" />
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold">أحمد الزهراوي</div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Star className="w-4 h-4 fill-primary text-primary" />
-                  <span>4.9</span>
-                  <span>•</span>
-                  <span>15 رحلة</span>
+        {/* Pending Requests */}
+        {!activeTrip && isOnline && pendingTrips.length > 0 && (
+          <div className="space-y-4 mb-6">
+            <h3 className="font-bold text-lg">طلبات جديدة ({pendingTrips.length})</h3>
+            {pendingTrips.map((trip) => (
+              <div 
+                key={trip.id}
+                className="bg-primary/10 border-2 border-primary rounded-2xl p-4 animate-scale-in"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-3 h-3 bg-primary rounded-full animate-ping" />
+                  <span className="font-bold text-primary">طلب جديد!</span>
                 </div>
-              </div>
-            </div>
 
-            <div className="bg-card rounded-xl p-3 mb-4">
-              <div className="flex items-start gap-3">
-                <div className="flex flex-col items-center">
-                  <div className="w-3 h-3 bg-accent rounded-full" />
-                  <div className="w-0.5 h-8 bg-border" />
-                  <div className="w-3 h-3 bg-primary rounded-full" />
-                </div>
-                <div className="flex-1 space-y-4">
-                  <div>
-                    <div className="text-xs text-muted-foreground">موقع الزبون</div>
-                    <div className="font-medium">شارع الحسن الثاني، المعاريف</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">المسافة منك</div>
-                    <div className="font-medium text-accent">3 دقائق</div>
+                <div className="bg-card rounded-xl p-3 mb-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-3 h-3 bg-accent rounded-full" />
+                      <div className="w-0.5 h-8 bg-border" />
+                      <div className="w-3 h-3 bg-primary rounded-full" />
+                    </div>
+                    <div className="flex-1 space-y-4">
+                      <div>
+                        <div className="text-xs text-muted-foreground">موقع الزبون</div>
+                        <div className="font-medium">{trip.pickup_address}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">الوقت</div>
+                        <div className="font-medium text-accent">
+                          {new Date(trip.created_at).toLocaleTimeString("ar-MA")}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => setHasRequest(false)}
-              >
-                <XCircle className="w-5 h-5 ml-2" />
-                رفض
-              </Button>
-              <Button 
-                variant="accent" 
-                size="lg" 
-                className="flex-1"
-                onClick={() => setHasRequest(false)}
-              >
-                <CheckCircle className="w-5 h-5 ml-2" />
-                قبول
-              </Button>
-            </div>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <XCircle className="w-5 h-5 ml-2" />
+                    رفض
+                  </Button>
+                  <Button 
+                    variant="accent" 
+                    size="lg" 
+                    className="flex-1"
+                    onClick={() => handleAcceptTrip(trip.id)}
+                  >
+                    <CheckCircle className="w-5 h-5 ml-2" />
+                    قبول
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* No Requests Message */}
+        {!activeTrip && isOnline && pendingTrips.length === 0 && (
+          <div className="bg-muted/50 rounded-2xl p-6 text-center mb-6">
+            <Car className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">لا توجد طلبات حالياً</p>
+            <p className="text-sm text-muted-foreground">انتظر قليلاً، ستصلك الطلبات قريباً</p>
           </div>
         )}
 
