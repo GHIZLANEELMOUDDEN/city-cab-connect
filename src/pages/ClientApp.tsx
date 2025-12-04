@@ -15,25 +15,23 @@ import {
   History,
   HelpCircle,
   LogOut,
-  Locate
+  Locate,
+  Loader2
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LeafletMap from "@/components/map/LeafletMap";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
-
-const nearbyTaxis = [
-  { id: 1, name: "محمد أمين", rating: 4.9, distance: "2 دقائق", taxiNumber: "A-1234", trips: 1520, lat: 33.5751, lng: -7.5878 },
-  { id: 2, name: "كريم الحسني", rating: 4.7, distance: "4 دقائق", taxiNumber: "B-5678", trips: 890, lat: 33.5711, lng: -7.5918 },
-  { id: 3, name: "عبد الله", rating: 4.8, distance: "5 دقائق", taxiNumber: "C-9012", trips: 2100, lat: 33.5771, lng: -7.5858 },
-];
+import { useTrips } from "@/hooks/useTrips";
 
 const ClientApp = () => {
-  const [selectedTaxi, setSelectedTaxi] = useState<number | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchAddress, setSearchAddress] = useState("");
+  const [isBooking, setIsBooking] = useState(false);
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
-  const { latitude, longitude, loading, error, refresh } = useGeoLocation();
+  const { latitude, longitude, loading: gpsLoading, error: gpsError, refresh } = useGeoLocation();
+  const { activeTrip, createTrip, cancelTrip, loading: tripsLoading } = useTrips();
 
   const handleSignOut = async () => {
     await signOut();
@@ -54,15 +52,55 @@ const ClientApp = () => {
     return [33.5731, -7.5898]; // Default to Casablanca
   }, [latitude, longitude]);
 
-  const taxiMarkers = useMemo(() => {
-    return nearbyTaxis.map((taxi) => ({
-      id: taxi.id,
-      latitude: taxi.lat,
-      longitude: taxi.lng,
-      type: "taxi" as const,
-      label: `${taxi.name} - ${taxi.taxiNumber}`,
-    }));
-  }, []);
+  const handleBookTaxi = async () => {
+    if (!latitude || !longitude) {
+      return;
+    }
+
+    setIsBooking(true);
+    const trip = await createTrip({
+      pickup_address: searchAddress || "موقعي الحالي",
+      pickup_lat: latitude,
+      pickup_lng: longitude,
+    });
+    setIsBooking(false);
+
+    if (trip) {
+      setSearchAddress("");
+    }
+  };
+
+  const handleCancelTrip = async () => {
+    if (activeTrip) {
+      await cancelTrip(activeTrip.id);
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "جاري البحث عن سائق...";
+      case "accepted":
+        return "السائق في الطريق إليك";
+      case "in_progress":
+        return "الرحلة جارية";
+      default:
+        return status;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "bg-primary";
+      case "accepted":
+        return "bg-accent";
+      case "in_progress":
+        return "bg-green-500";
+      default:
+        return "bg-muted";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -138,7 +176,7 @@ const ClientApp = () => {
         <LeafletMap
           center={mapCenter}
           zoom={15}
-          markers={taxiMarkers}
+          markers={[]}
           userLocation={userLocation}
           className="w-full h-full"
         />
@@ -150,6 +188,8 @@ const ClientApp = () => {
             <input 
               type="text" 
               placeholder="إلى أين تريد الذهاب؟" 
+              value={searchAddress}
+              onChange={(e) => setSearchAddress(e.target.value)}
               className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
             />
             <Search className="w-5 h-5 text-muted-foreground" />
@@ -161,80 +201,148 @@ const ClientApp = () => {
           onClick={refresh}
           className="absolute bottom-4 right-4 z-[1000] w-12 h-12 bg-card rounded-full shadow-card flex items-center justify-center hover:bg-muted transition-colors"
         >
-          <Locate className={`w-5 h-5 text-accent ${loading ? "animate-pulse" : ""}`} />
+          <Locate className={`w-5 h-5 text-accent ${gpsLoading ? "animate-pulse" : ""}`} />
         </button>
 
         {/* GPS Status */}
-        {error && (
+        {gpsError && (
           <div className="absolute bottom-4 left-4 right-20 z-[1000] bg-destructive/90 text-destructive-foreground text-sm p-3 rounded-xl">
-            {error}
+            {gpsError}
           </div>
         )}
       </div>
 
-      {/* Bottom Sheet - Nearby Taxis */}
+      {/* Bottom Sheet */}
       <div className="bg-card rounded-t-3xl -mt-8 relative z-10 shadow-card min-h-[40vh]">
         <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mt-3 mb-4" />
         
         <div className="px-4 pb-8">
-          <h2 className="text-lg font-bold mb-4">الطاكسيات القريبة منك</h2>
-          
-          <div className="space-y-3">
-            {nearbyTaxis.map((taxi) => (
-              <div 
-                key={taxi.id}
-                onClick={() => setSelectedTaxi(taxi.id)}
-                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-                  selectedTaxi === taxi.id 
-                    ? "border-primary bg-primary/5" 
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="text-2xl">🚕</span>
+          {/* Active Trip Status */}
+          {activeTrip ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-3 h-3 rounded-full animate-pulse ${getStatusColor(activeTrip.status)}`} />
+                <h2 className="text-lg font-bold">{getStatusText(activeTrip.status)}</h2>
+              </div>
+
+              {/* Trip Details */}
+              <div className="bg-muted/50 rounded-2xl p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex flex-col items-center">
+                    <div className="w-3 h-3 bg-accent rounded-full" />
+                    <div className="w-0.5 h-8 bg-border" />
+                    <div className="w-3 h-3 bg-primary rounded-full" />
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">{taxi.name}</span>
-                      <div className="flex items-center gap-1 text-primary">
-                        <Star className="w-4 h-4 fill-primary" />
-                        <span className="font-medium">{taxi.rating}</span>
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <div className="text-xs text-muted-foreground">موقع الانطلاق</div>
+                      <div className="font-medium">{activeTrip.pickup_address}</div>
+                    </div>
+                    {activeTrip.dropoff_address && (
+                      <div>
+                        <div className="text-xs text-muted-foreground">الوجهة</div>
+                        <div className="font-medium">{activeTrip.dropoff_address}</div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                      <span>رقم: {taxi.taxiNumber}</span>
-                      <span>•</span>
-                      <span>{taxi.trips} رحلة</span>
-                    </div>
+                    )}
                   </div>
                 </div>
-                
-                <div className="flex items-center justify-between mt-4">
-                  <div className="flex items-center gap-2 text-accent">
-                    <Clock className="w-4 h-4" />
-                    <span className="font-medium">{taxi.distance}</span>
-                  </div>
-                  
-                  {selectedTaxi === taxi.id && (
+              </div>
+
+              {/* Driver Info (when accepted) */}
+              {activeTrip.status !== "pending" && (
+                <div className="bg-accent/10 border border-accent/30 rounded-2xl p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-accent/20 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">🚕</span>
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold">السائق في الطريق</div>
+                      <div className="text-sm text-muted-foreground">سيصل خلال دقائق</div>
+                    </div>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" className="h-10 w-10">
-                        <MessageCircle className="w-5 h-5" />
-                      </Button>
                       <Button variant="ghost" size="icon" className="h-10 w-10">
                         <Phone className="w-5 h-5" />
                       </Button>
+                      <Button variant="ghost" size="icon" className="h-10 w-10">
+                        <MessageCircle className="w-5 h-5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Cancel Button (only for pending/accepted) */}
+              {(activeTrip.status === "pending" || activeTrip.status === "accepted") && (
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  onClick={handleCancelTrip}
+                >
+                  إلغاء الرحلة
+                </Button>
+              )}
+            </div>
+          ) : (
+            <>
+              <h2 className="text-lg font-bold mb-4">احجز طاكسي الآن</h2>
+              
+              {/* Location Info */}
+              <div className="bg-muted/50 rounded-2xl p-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center">
+                    <Navigation className="w-5 h-5 text-accent" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm text-muted-foreground">موقعك الحالي</div>
+                    <div className="font-medium">
+                      {gpsLoading ? "جاري تحديد الموقع..." : 
+                       gpsError ? "تعذر تحديد الموقع" : 
+                       "تم تحديد موقعك"}
+                    </div>
+                  </div>
+                  {latitude && longitude && (
+                    <div className="text-xs text-muted-foreground">
+                      {latitude.toFixed(4)}, {longitude.toFixed(4)}
                     </div>
                   )}
                 </div>
               </div>
-            ))}
-          </div>
 
-          {selectedTaxi && (
-            <Button variant="hero" size="xl" className="w-full mt-6">
-              احجز الآن
-            </Button>
+              {/* Features */}
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="bg-primary/10 rounded-xl p-3 text-center">
+                  <Clock className="w-5 h-5 text-primary mx-auto mb-1" />
+                  <div className="text-xs">وصول سريع</div>
+                </div>
+                <div className="bg-accent/10 rounded-xl p-3 text-center">
+                  <Star className="w-5 h-5 text-accent mx-auto mb-1" />
+                  <div className="text-xs">سائقين موثوقين</div>
+                </div>
+                <div className="bg-secondary/20 rounded-xl p-3 text-center">
+                  <Car className="w-5 h-5 text-secondary mx-auto mb-1" />
+                  <div className="text-xs">أسعار منافسة</div>
+                </div>
+              </div>
+
+              {/* Book Button */}
+              <Button 
+                variant="hero" 
+                size="xl" 
+                className="w-full"
+                onClick={handleBookTaxi}
+                disabled={!latitude || !longitude || isBooking || gpsLoading}
+              >
+                {isBooking ? (
+                  <>
+                    <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                    جاري الحجز...
+                  </>
+                ) : (
+                  "احجز طاكسي الآن"
+                )}
+              </Button>
+            </>
           )}
         </div>
       </div>

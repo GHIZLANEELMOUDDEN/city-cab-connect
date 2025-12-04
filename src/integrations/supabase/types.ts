@@ -65,6 +65,84 @@ export type Database = {
         }
         Relationships: []
       }
+      trips: {
+        Row: {
+          accepted_at: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          client_id: string
+          client_note: string | null
+          completed_at: string | null
+          created_at: string
+          distance_km: number | null
+          driver_id: string | null
+          driver_note: string | null
+          dropoff_address: string | null
+          dropoff_lat: number | null
+          dropoff_lng: number | null
+          estimated_price: number | null
+          final_price: number | null
+          id: string
+          pickup_address: string
+          pickup_lat: number
+          pickup_lng: number
+          rating: number | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["trip_status"]
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          client_id: string
+          client_note?: string | null
+          completed_at?: string | null
+          created_at?: string
+          distance_km?: number | null
+          driver_id?: string | null
+          driver_note?: string | null
+          dropoff_address?: string | null
+          dropoff_lat?: number | null
+          dropoff_lng?: number | null
+          estimated_price?: number | null
+          final_price?: number | null
+          id?: string
+          pickup_address: string
+          pickup_lat: number
+          pickup_lng: number
+          rating?: number | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["trip_status"]
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          client_id?: string
+          client_note?: string | null
+          completed_at?: string | null
+          created_at?: string
+          distance_km?: number | null
+          driver_id?: string | null
+          driver_note?: string | null
+          dropoff_address?: string | null
+          dropoff_lat?: number | null
+          dropoff_lng?: number | null
+          estimated_price?: number | null
+          final_price?: number | null
+          id?: string
+          pickup_address?: string
+          pickup_lat?: number
+          pickup_lng?: number
+          rating?: number | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["trip_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -73,6 +151,12 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      trip_status:
+        | "pending"
+        | "accepted"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
       user_type: "client" | "driver"
     }
     CompositeTypes: {
@@ -201,6 +285,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      trip_status: [
+        "pending",
+        "accepted",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
       user_type: ["client", "driver"],
     },
   },
