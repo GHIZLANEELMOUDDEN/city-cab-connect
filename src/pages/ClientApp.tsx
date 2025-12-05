@@ -146,18 +146,14 @@ const ClientApp = () => {
               </div>
             </div>
             <nav className="p-4 space-y-2">
-              <a href="#" className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors">
+              <Link to="/history" className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors">
                 <History className="w-5 h-5 text-muted-foreground" />
                 <span>سجل الرحلات</span>
-              </a>
-              <a href="#" className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors">
-                <Search className="w-5 h-5 text-muted-foreground" />
-                <span>الأشياء المفقودة</span>
-              </a>
-              <a href="#" className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors">
+              </Link>
+              <Link to="/about" className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors">
                 <HelpCircle className="w-5 h-5 text-muted-foreground" />
-                <span>المساعدة</span>
-              </a>
+                <span>حول التطبيق</span>
+              </Link>
               <div className="border-t border-border my-4" />
               <button 
                 onClick={handleSignOut}

@@ -10,6 +10,8 @@ import Auth from "./pages/Auth";
 import ClientApp from "./pages/ClientApp";
 import DriverApp from "./pages/DriverApp";
 import AdminDashboard from "./pages/AdminDashboard";
+import TripHistory from "./pages/TripHistory";
+import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +43,15 @@ const App = () => (
               } 
             />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route 
+              path="/history" 
+              element={
+                <ProtectedRoute allowedUserTypes={["client", "driver"]}>
+                  <TripHistory />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/about" element={<About />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
