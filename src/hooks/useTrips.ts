@@ -93,6 +93,8 @@ export const useTrips = () => {
     dropoff_lat?: number;
     dropoff_lng?: number;
     client_note?: string;
+    estimated_price?: number;
+    distance_km?: number;
   }) => {
     if (!user) {
       toast.error("يجب تسجيل الدخول أولاً");

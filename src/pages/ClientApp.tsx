@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   MapPin, 
@@ -16,18 +16,27 @@ import {
   HelpCircle,
   LogOut,
   Locate,
-  Loader2
+  Loader2,
+  DollarSign,
+  Route,
+  Timer
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LeafletMap from "@/components/map/LeafletMap";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { useTrips } from "@/hooks/useTrips";
+import { calculatePriceEstimate, formatPrice, type PriceEstimate } from "@/lib/priceCalculator";
 
 const ClientApp = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [searchAddress, setSearchAddress] = useState("");
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [dropoffAddress, setDropoffAddress] = useState("");
+  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isBooking, setIsBooking] = useState(false);
+  const [showPriceEstimate, setShowPriceEstimate] = useState(false);
+  const [priceEstimate, setPriceEstimate] = useState<PriceEstimate | null>(null);
+  
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const { latitude, longitude, loading: gpsLoading, error: gpsError, refresh } = useGeoLocation();
@@ -49,8 +58,61 @@ const ClientApp = () => {
     if (latitude && longitude) {
       return [latitude, longitude];
     }
-    return [33.5731, -7.5898]; // Default to Casablanca
+    return [33.3152, 44.3661]; // Default to Baghdad
   }, [latitude, longitude]);
+
+  // Map markers for pickup and dropoff
+  const markers = useMemo(() => {
+    const m: Array<{
+      id: string;
+      latitude: number;
+      longitude: number;
+      type: "taxi" | "user" | "destination";
+      label?: string;
+    }> = [];
+    
+    if (dropoffCoords) {
+      m.push({
+        id: "dropoff",
+        latitude: dropoffCoords.lat,
+        longitude: dropoffCoords.lng,
+        type: "destination",
+        label: dropoffAddress || "الوجهة",
+      });
+    }
+    
+    return m;
+  }, [dropoffCoords, dropoffAddress]);
+
+  // Calculate price estimate when dropoff is set
+  useEffect(() => {
+    if (latitude && longitude && dropoffCoords) {
+      const estimate = calculatePriceEstimate(
+        latitude,
+        longitude,
+        dropoffCoords.lat,
+        dropoffCoords.lng
+      );
+      setPriceEstimate(estimate);
+      setShowPriceEstimate(true);
+    } else {
+      setPriceEstimate(null);
+      setShowPriceEstimate(false);
+    }
+  }, [latitude, longitude, dropoffCoords]);
+
+  // Simulate setting dropoff coords when address is entered
+  // In a real app, you would use a geocoding API
+  const handleDropoffSearch = () => {
+    if (dropoffAddress && latitude && longitude) {
+      // Simulate a dropoff location ~3-8 km away
+      const randomOffset = () => (Math.random() - 0.5) * 0.1;
+      setDropoffCoords({
+        lat: latitude + randomOffset(),
+        lng: longitude + randomOffset(),
+      });
+    }
+  };
 
   const handleBookTaxi = async () => {
     if (!latitude || !longitude) {
@@ -59,14 +121,22 @@ const ClientApp = () => {
 
     setIsBooking(true);
     const trip = await createTrip({
-      pickup_address: searchAddress || "موقعي الحالي",
+      pickup_address: pickupAddress || "موقعي الحالي",
       pickup_lat: latitude,
       pickup_lng: longitude,
+      dropoff_address: dropoffAddress || undefined,
+      dropoff_lat: dropoffCoords?.lat,
+      dropoff_lng: dropoffCoords?.lng,
+      estimated_price: priceEstimate?.totalFare,
+      distance_km: priceEstimate?.distanceKm,
     });
     setIsBooking(false);
 
     if (trip) {
-      setSearchAddress("");
+      setPickupAddress("");
+      setDropoffAddress("");
+      setDropoffCoords(null);
+      setShowPriceEstimate(false);
     }
   };
 
@@ -74,6 +144,12 @@ const ClientApp = () => {
     if (activeTrip) {
       await cancelTrip(activeTrip.id);
     }
+  };
+
+  const clearDropoff = () => {
+    setDropoffAddress("");
+    setDropoffCoords(null);
+    setShowPriceEstimate(false);
   };
 
   const getStatusText = (status: string) => {
@@ -168,27 +244,49 @@ const ClientApp = () => {
       )}
 
       {/* Map Area */}
-      <div className="pt-16 h-[60vh] relative">
+      <div className="pt-16 h-[55vh] relative">
         <LeafletMap
           center={mapCenter}
           zoom={15}
-          markers={[]}
+          markers={markers}
           userLocation={userLocation}
           className="w-full h-full"
         />
 
-        {/* Search Bar */}
-        <div className="absolute top-4 left-4 right-4 z-[1000]">
-          <div className="bg-card rounded-2xl shadow-card p-4 flex items-center gap-3">
-            <MapPin className="w-5 h-5 text-primary" />
+        {/* Search Bars */}
+        <div className="absolute top-4 left-4 right-4 z-[1000] space-y-2">
+          {/* Pickup */}
+          <div className="bg-card rounded-2xl shadow-card p-3 flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-accent" />
+            <input 
+              type="text" 
+              placeholder="موقع الانطلاق (موقعك الحالي)" 
+              value={pickupAddress}
+              onChange={(e) => setPickupAddress(e.target.value)}
+              className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground text-sm"
+            />
+            <Navigation className="w-4 h-4 text-accent" />
+          </div>
+          
+          {/* Dropoff */}
+          <div className="bg-card rounded-2xl shadow-card p-3 flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-primary" />
             <input 
               type="text" 
               placeholder="إلى أين تريد الذهاب؟" 
-              value={searchAddress}
-              onChange={(e) => setSearchAddress(e.target.value)}
-              className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
+              value={dropoffAddress}
+              onChange={(e) => setDropoffAddress(e.target.value)}
+              onBlur={handleDropoffSearch}
+              onKeyDown={(e) => e.key === "Enter" && handleDropoffSearch()}
+              className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground text-sm"
             />
-            <Search className="w-5 h-5 text-muted-foreground" />
+            {dropoffCoords ? (
+              <button onClick={clearDropoff} className="p-1">
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            ) : (
+              <Search className="w-4 h-4 text-muted-foreground" />
+            )}
           </div>
         </div>
 
@@ -209,7 +307,7 @@ const ClientApp = () => {
       </div>
 
       {/* Bottom Sheet */}
-      <div className="bg-card rounded-t-3xl -mt-8 relative z-10 shadow-card min-h-[40vh]">
+      <div className="bg-card rounded-t-3xl -mt-8 relative z-10 shadow-card min-h-[45vh]">
         <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mt-3 mb-4" />
         
         <div className="px-4 pb-8">
@@ -242,6 +340,14 @@ const ClientApp = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Estimated Price Display */}
+                {activeTrip.estimated_price && (
+                  <div className="flex items-center justify-between pt-3 border-t border-border">
+                    <span className="text-sm text-muted-foreground">السعر التقديري</span>
+                    <span className="font-bold text-primary">{formatPrice(Number(activeTrip.estimated_price))}</span>
+                  </div>
+                )}
               </div>
 
               {/* Driver Info (when accepted) */}
@@ -283,43 +389,106 @@ const ClientApp = () => {
             <>
               <h2 className="text-lg font-bold mb-4">احجز طاكسي الآن</h2>
               
-              {/* Location Info */}
-              <div className="bg-muted/50 rounded-2xl p-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center">
-                    <Navigation className="w-5 h-5 text-accent" />
+              {/* Price Estimate Card */}
+              {showPriceEstimate && priceEstimate && (
+                <div className="bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20 rounded-2xl p-4 mb-4 animate-scale-in">
+                  <div className="flex items-center gap-2 mb-3">
+                    <DollarSign className="w-5 h-5 text-primary" />
+                    <span className="font-semibold">تقدير السعر</span>
                   </div>
-                  <div className="flex-1">
-                    <div className="text-sm text-muted-foreground">موقعك الحالي</div>
-                    <div className="font-medium">
-                      {gpsLoading ? "جاري تحديد الموقع..." : 
-                       gpsError ? "تعذر تحديد الموقع" : 
-                       "تم تحديد موقعك"}
+                  
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="bg-card/50 rounded-xl p-3 text-center">
+                      <Route className="w-5 h-5 text-accent mx-auto mb-1" />
+                      <div className="text-lg font-bold">{priceEstimate.distanceKm}</div>
+                      <div className="text-xs text-muted-foreground">كم</div>
+                    </div>
+                    <div className="bg-card/50 rounded-xl p-3 text-center">
+                      <Timer className="w-5 h-5 text-accent mx-auto mb-1" />
+                      <div className="text-lg font-bold">{priceEstimate.estimatedMinutes}</div>
+                      <div className="text-xs text-muted-foreground">دقيقة</div>
+                    </div>
+                    <div className="bg-primary/20 rounded-xl p-3 text-center">
+                      <DollarSign className="w-5 h-5 text-primary mx-auto mb-1" />
+                      <div className="text-lg font-bold text-primary">{priceEstimate.totalFare.toLocaleString('ar-IQ')}</div>
+                      <div className="text-xs text-muted-foreground">د.ع</div>
                     </div>
                   </div>
-                  {latitude && longitude && (
-                    <div className="text-xs text-muted-foreground">
-                      {latitude.toFixed(4)}, {longitude.toFixed(4)}
+
+                  {/* Price Breakdown */}
+                  <div className="space-y-2 text-sm border-t border-border/50 pt-3">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">أجرة البدء</span>
+                      <span>{formatPrice(priceEstimate.baseFare)}</span>
                     </div>
-                  )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">أجرة المسافة ({priceEstimate.distanceKm} كم)</span>
+                      <span>{formatPrice(priceEstimate.distanceFare)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">أجرة الوقت (~{priceEstimate.estimatedMinutes} د)</span>
+                      <span>{formatPrice(priceEstimate.timeFare)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold pt-2 border-t border-border/50">
+                      <span>الإجمالي التقديري</span>
+                      <span className="text-primary">{formatPrice(priceEstimate.totalFare)}</span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground mt-3 text-center">
+                    * السعر النهائي قد يختلف حسب حركة المرور والمسار الفعلي
+                  </p>
                 </div>
-              </div>
+              )}
+
+              {/* Location Info */}
+              {!showPriceEstimate && (
+                <div className="bg-muted/50 rounded-2xl p-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-accent/20 rounded-full flex items-center justify-center">
+                      <Navigation className="w-5 h-5 text-accent" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm text-muted-foreground">موقعك الحالي</div>
+                      <div className="font-medium">
+                        {gpsLoading ? "جاري تحديد الموقع..." : 
+                         gpsError ? "تعذر تحديد الموقع" : 
+                         "تم تحديد موقعك"}
+                      </div>
+                    </div>
+                    {latitude && longitude && (
+                      <div className="text-xs text-muted-foreground">
+                        {latitude.toFixed(4)}, {longitude.toFixed(4)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Features */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                <div className="bg-primary/10 rounded-xl p-3 text-center">
-                  <Clock className="w-5 h-5 text-primary mx-auto mb-1" />
-                  <div className="text-xs">وصول سريع</div>
+              {!showPriceEstimate && (
+                <div className="grid grid-cols-3 gap-3 mb-6">
+                  <div className="bg-primary/10 rounded-xl p-3 text-center">
+                    <Clock className="w-5 h-5 text-primary mx-auto mb-1" />
+                    <div className="text-xs">وصول سريع</div>
+                  </div>
+                  <div className="bg-accent/10 rounded-xl p-3 text-center">
+                    <Star className="w-5 h-5 text-accent mx-auto mb-1" />
+                    <div className="text-xs">سائقين موثوقين</div>
+                  </div>
+                  <div className="bg-secondary/20 rounded-xl p-3 text-center">
+                    <Car className="w-5 h-5 text-secondary mx-auto mb-1" />
+                    <div className="text-xs">أسعار منافسة</div>
+                  </div>
                 </div>
-                <div className="bg-accent/10 rounded-xl p-3 text-center">
-                  <Star className="w-5 h-5 text-accent mx-auto mb-1" />
-                  <div className="text-xs">سائقين موثوقين</div>
-                </div>
-                <div className="bg-secondary/20 rounded-xl p-3 text-center">
-                  <Car className="w-5 h-5 text-secondary mx-auto mb-1" />
-                  <div className="text-xs">أسعار منافسة</div>
-                </div>
-              </div>
+              )}
+
+              {/* Instruction text */}
+              {!showPriceEstimate && !dropoffAddress && (
+                <p className="text-sm text-muted-foreground text-center mb-4">
+                  أدخل وجهتك لمعرفة السعر التقديري
+                </p>
+              )}
 
               {/* Book Button */}
               <Button 
@@ -333,6 +502,10 @@ const ClientApp = () => {
                   <>
                     <Loader2 className="w-5 h-5 ml-2 animate-spin" />
                     جاري الحجز...
+                  </>
+                ) : showPriceEstimate ? (
+                  <>
+                    تأكيد الحجز - {formatPrice(priceEstimate?.totalFare || 0)}
                   </>
                 ) : (
                   "احجز طاكسي الآن"
