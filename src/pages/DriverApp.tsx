@@ -19,7 +19,9 @@ import {
   MessageCircle,
   Locate,
   Play,
-  Flag
+  Flag,
+  History,
+  Info
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -458,18 +460,18 @@ const DriverApp = () => {
             </div>
             <span className="text-xs text-muted-foreground">الإحصائيات</span>
           </button>
-          <button className="flex flex-col items-center gap-2 p-3">
+          <Link to="/history" className="flex flex-col items-center gap-2 p-3">
             <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center">
-              <Clock className="w-6 h-6 text-accent" />
+              <History className="w-6 h-6 text-accent" />
             </div>
             <span className="text-xs text-muted-foreground">السجل</span>
-          </button>
-          <button className="flex flex-col items-center gap-2 p-3">
+          </Link>
+          <Link to="/about" className="flex flex-col items-center gap-2 p-3">
             <div className="w-12 h-12 bg-secondary/20 rounded-2xl flex items-center justify-center">
-              <MessageCircle className="w-6 h-6 text-secondary" />
+              <Info className="w-6 h-6 text-secondary" />
             </div>
-            <span className="text-xs text-muted-foreground">الدعم</span>
-          </button>
+            <span className="text-xs text-muted-foreground">حول</span>
+          </Link>
           <button className="flex flex-col items-center gap-2 p-3">
             <div className="w-12 h-12 bg-muted rounded-2xl flex items-center justify-center">
               <Settings className="w-6 h-6 text-muted-foreground" />
