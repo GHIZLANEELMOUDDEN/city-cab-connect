@@ -76,6 +76,9 @@ export type Database = {
           created_at: string
           distance_km: number | null
           driver_id: string | null
+          driver_lat: number | null
+          driver_lng: number | null
+          driver_location_updated_at: string | null
           driver_note: string | null
           dropoff_address: string | null
           dropoff_lat: number | null
@@ -101,6 +104,9 @@ export type Database = {
           created_at?: string
           distance_km?: number | null
           driver_id?: string | null
+          driver_lat?: number | null
+          driver_lng?: number | null
+          driver_location_updated_at?: string | null
           driver_note?: string | null
           dropoff_address?: string | null
           dropoff_lat?: number | null
@@ -126,6 +132,9 @@ export type Database = {
           created_at?: string
           distance_km?: number | null
           driver_id?: string | null
+          driver_lat?: number | null
+          driver_lng?: number | null
+          driver_location_updated_at?: string | null
           driver_note?: string | null
           dropoff_address?: string | null
           dropoff_lat?: number | null

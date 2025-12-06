@@ -26,7 +26,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import LeafletMap from "@/components/map/LeafletMap";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { useTrips } from "@/hooks/useTrips";
+import { useDriverTracking } from "@/hooks/useDriverTracking";
+import { useNotifications } from "@/hooks/useNotifications";
 import { calculatePriceEstimate, formatPrice, type PriceEstimate } from "@/lib/priceCalculator";
+import AddressSearch from "@/components/AddressSearch";
+import NotificationBell from "@/components/NotificationBell";
 
 const ClientApp = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -41,6 +45,19 @@ const ClientApp = () => {
   const navigate = useNavigate();
   const { latitude, longitude, loading: gpsLoading, error: gpsError, refresh } = useGeoLocation();
   const { activeTrip, createTrip, cancelTrip, loading: tripsLoading } = useTrips();
+  
+  // Driver tracking for active trip
+  const { driverLocation } = useDriverTracking({
+    tripId: activeTrip?.id || null,
+    isDriver: false,
+    enabled: activeTrip?.status === "accepted" || activeTrip?.status === "in_progress",
+  });
+
+  // Notifications
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications({
+    userId: user?.id || null,
+    userType: profile?.user_type || null,
+  });
 
   const handleSignOut = async () => {
     await signOut();
@@ -61,7 +78,7 @@ const ClientApp = () => {
     return [33.3152, 44.3661]; // Default to Baghdad
   }, [latitude, longitude]);
 
-  // Map markers for pickup and dropoff
+  // Map markers for pickup, dropoff and driver
   const markers = useMemo(() => {
     const m: Array<{
       id: string;
@@ -80,9 +97,20 @@ const ClientApp = () => {
         label: dropoffAddress || "الوجهة",
       });
     }
+
+    // Add driver location marker if tracking
+    if (driverLocation) {
+      m.push({
+        id: "driver",
+        latitude: driverLocation.lat,
+        longitude: driverLocation.lng,
+        type: "taxi",
+        label: "السائق",
+      });
+    }
     
     return m;
-  }, [dropoffCoords, dropoffAddress]);
+  }, [dropoffCoords, dropoffAddress, driverLocation]);
 
   // Calculate price estimate when dropoff is set
   useEffect(() => {
@@ -101,17 +129,9 @@ const ClientApp = () => {
     }
   }, [latitude, longitude, dropoffCoords]);
 
-  // Simulate setting dropoff coords when address is entered
-  // In a real app, you would use a geocoding API
-  const handleDropoffSearch = () => {
-    if (dropoffAddress && latitude && longitude) {
-      // Simulate a dropoff location ~3-8 km away
-      const randomOffset = () => (Math.random() - 0.5) * 0.1;
-      setDropoffCoords({
-        lat: latitude + randomOffset(),
-        lng: longitude + randomOffset(),
-      });
-    }
+  // Handle address selection from geocoding
+  const handleAddressSelect = (result: { address: string; lat: number; lng: number }) => {
+    setDropoffCoords({ lat: result.lat, lng: result.lng });
   };
 
   const handleBookTaxi = async () => {
@@ -194,9 +214,12 @@ const ClientApp = () => {
             <span className="font-bold text-foreground">Taxicity</span>
           </Link>
 
-          <button className="p-2">
-            <User className="w-6 h-6 text-foreground" />
-          </button>
+          <NotificationBell
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onMarkAsRead={markAsRead}
+            onMarkAllAsRead={markAllAsRead}
+          />
         </div>
       </header>
 
@@ -268,26 +291,14 @@ const ClientApp = () => {
             <Navigation className="w-4 h-4 text-accent" />
           </div>
           
-          {/* Dropoff */}
-          <div className="bg-card rounded-2xl shadow-card p-3 flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-primary" />
-            <input 
-              type="text" 
-              placeholder="إلى أين تريد الذهاب؟" 
-              value={dropoffAddress}
-              onChange={(e) => setDropoffAddress(e.target.value)}
-              onBlur={handleDropoffSearch}
-              onKeyDown={(e) => e.key === "Enter" && handleDropoffSearch()}
-              className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground text-sm"
-            />
-            {dropoffCoords ? (
-              <button onClick={clearDropoff} className="p-1">
-                <X className="w-4 h-4 text-muted-foreground" />
-              </button>
-            ) : (
-              <Search className="w-4 h-4 text-muted-foreground" />
-            )}
-          </div>
+          {/* Dropoff with Geocoding */}
+          <AddressSearch
+            placeholder="إلى أين تريد الذهاب؟"
+            value={dropoffAddress}
+            onChange={setDropoffAddress}
+            onSelect={handleAddressSelect}
+            icon="dropoff"
+          />
         </div>
 
         {/* My Location Button */}
