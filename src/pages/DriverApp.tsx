@@ -28,6 +28,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import LeafletMap from "@/components/map/LeafletMap";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { useTrips } from "@/hooks/useTrips";
+import { useDriverTracking } from "@/hooks/useDriverTracking";
+import { useNotifications } from "@/hooks/useNotifications";
+import NotificationBell from "@/components/NotificationBell";
 
 const DriverApp = () => {
   const [isOnline, setIsOnline] = useState(true);
@@ -36,6 +39,19 @@ const DriverApp = () => {
   const navigate = useNavigate();
   const { latitude, longitude, loading, error, refresh } = useGeoLocation();
   const { pendingTrips, activeTrip, acceptTrip, startTrip, completeTrip, cancelTrip } = useTrips();
+
+  // Real-time driver location tracking
+  const { isTracking } = useDriverTracking({
+    tripId: activeTrip?.id || null,
+    isDriver: true,
+    enabled: isOnline && (activeTrip?.status === "accepted" || activeTrip?.status === "in_progress"),
+  });
+
+  // Notifications
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications({
+    userId: user?.id || null,
+    userType: profile?.user_type || null,
+  });
 
   const stats = {
     todayTrips: 12,
@@ -224,14 +240,15 @@ const DriverApp = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <Bell className="w-6 h-6" />
-              {pendingTrips.length > 0 && (
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-destructive rounded-full flex items-center justify-center text-xs text-destructive-foreground">
-                  {pendingTrips.length}
-                </div>
-              )}
-            </div>
+            <NotificationBell
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkAsRead={markAsRead}
+              onMarkAllAsRead={markAllAsRead}
+            />
+            {isTracking && (
+              <div className="w-3 h-3 bg-accent rounded-full animate-pulse" title="جاري تتبع الموقع" />
+            )}
           </div>
         </div>
 

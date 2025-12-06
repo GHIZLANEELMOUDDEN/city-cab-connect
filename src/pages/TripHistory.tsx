@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTrips } from "@/hooks/useTrips";
@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowRight, Calendar, Clock, MapPin, Star, User, Car, ArrowLeft, Info, Phone } from "lucide-react";
-import { format } from "date-fns";
+import { ArrowRight, Calendar, Clock, MapPin, Star, User, Car, ArrowLeft, Info, Phone, DollarSign, TrendingUp, Route, Download } from "lucide-react";
+import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ar } from "date-fns/locale";
 
 const TripHistory = () => {
@@ -18,12 +18,51 @@ const TripHistory = () => {
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
   const [rating, setRating] = useState(0);
   const [isRatingOpen, setIsRatingOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState<"all" | "month" | "week">("all");
 
   const isDriver = profile?.user_type === "driver";
 
-  const completedTrips = trips.filter((t) => t.status === "completed");
-  const cancelledTrips = trips.filter((t) => t.status === "cancelled");
-  const allTrips = trips.filter((t) => ["completed", "cancelled"].includes(t.status));
+  // Filter trips by date
+  const filteredTrips = useMemo(() => {
+    const now = new Date();
+    let filtered = trips.filter((t) => ["completed", "cancelled"].includes(t.status));
+    
+    if (dateFilter === "month") {
+      filtered = filtered.filter((t) => 
+        isWithinInterval(new Date(t.created_at), {
+          start: startOfMonth(now),
+          end: endOfMonth(now),
+        })
+      );
+    } else if (dateFilter === "week") {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter((t) => new Date(t.created_at) >= weekAgo);
+    }
+    
+    return filtered;
+  }, [trips, dateFilter]);
+
+  const completedTrips = filteredTrips.filter((t) => t.status === "completed");
+  const cancelledTrips = filteredTrips.filter((t) => t.status === "cancelled");
+  const allTrips = filteredTrips;
+
+  // Statistics
+  const stats = useMemo(() => {
+    const completed = completedTrips;
+    const totalEarnings = completed.reduce((sum, t) => sum + (Number(t.final_price) || 0), 0);
+    const totalDistance = completed.reduce((sum, t) => sum + (Number(t.distance_km) || 0), 0);
+    const avgRating = completed.length > 0
+      ? completed.reduce((sum, t) => sum + (t.rating || 0), 0) / completed.filter(t => t.rating).length
+      : 0;
+    
+    return {
+      totalTrips: completed.length,
+      totalEarnings,
+      totalDistance: totalDistance.toFixed(1),
+      avgRating: avgRating.toFixed(1),
+      cancelledCount: cancelledTrips.length,
+    };
+  }, [completedTrips, cancelledTrips]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -226,6 +265,63 @@ const TripHistory = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <Card className="bg-gradient-to-br from-primary/10 to-primary/5">
+            <CardContent className="p-4 text-center">
+              <Car className="w-6 h-6 text-primary mx-auto mb-2" />
+              <div className="text-2xl font-bold">{stats.totalTrips}</div>
+              <div className="text-xs text-muted-foreground">رحلات مكتملة</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-accent/10 to-accent/5">
+            <CardContent className="p-4 text-center">
+              <DollarSign className="w-6 h-6 text-accent mx-auto mb-2" />
+              <div className="text-2xl font-bold">{stats.totalEarnings.toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground">إجمالي {isDriver ? "الأرباح" : "المدفوعات"}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-secondary/10 to-secondary/5">
+            <CardContent className="p-4 text-center">
+              <Route className="w-6 h-6 text-secondary-foreground mx-auto mb-2" />
+              <div className="text-2xl font-bold">{stats.totalDistance}</div>
+              <div className="text-xs text-muted-foreground">كم مقطوعة</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5">
+            <CardContent className="p-4 text-center">
+              <Star className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
+              <div className="text-2xl font-bold">{stats.avgRating || "-"}</div>
+              <div className="text-xs text-muted-foreground">متوسط التقييم</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Date Filter */}
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+          <Button
+            variant={dateFilter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDateFilter("all")}
+          >
+            الكل
+          </Button>
+          <Button
+            variant={dateFilter === "month" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDateFilter("month")}
+          >
+            هذا الشهر
+          </Button>
+          <Button
+            variant={dateFilter === "week" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDateFilter("week")}
+          >
+            آخر أسبوع
+          </Button>
+        </div>
+
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="all">الكل ({allTrips.length})</TabsTrigger>
