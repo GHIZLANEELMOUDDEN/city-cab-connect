@@ -14,6 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
+      driver_subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          driver_id: string
+          id: string
+          plan_type: string
+          price_amount: number
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          driver_id: string
+          id?: string
+          plan_type: string
+          price_amount: number
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          driver_id?: string
+          id?: string
+          plan_type?: string
+          price_amount?: number
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      driver_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          driver_id: string
+          id: string
+          transaction_type: string
+          trip_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          driver_id: string
+          id?: string
+          transaction_type: string
+          trip_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          driver_id?: string
+          id?: string
+          transaction_type?: string
+          trip_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_transactions_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -157,7 +237,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_active_trip_participant: {
+        Args: { _trip_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       trip_status:
