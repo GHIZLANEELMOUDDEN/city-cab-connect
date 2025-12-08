@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Car,
@@ -21,9 +21,11 @@ import {
   Play,
   Flag,
   History,
-  Info
+  Info,
+  CreditCard,
+  CheckCircle2
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LeafletMap from "@/components/map/LeafletMap";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
@@ -31,14 +33,37 @@ import { useTrips } from "@/hooks/useTrips";
 import { useDriverTracking } from "@/hooks/useDriverTracking";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationBell from "@/components/NotificationBell";
+import SubscriptionCard from "@/components/driver/SubscriptionCard";
+import { useDriverSubscription } from "@/hooks/useDriverSubscription";
+import { toast } from "sonner";
 
 const DriverApp = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [activeTab, setActiveTab] = useState("home");
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { latitude, longitude, loading, error, refresh } = useGeoLocation();
   const { pendingTrips, activeTrip, acceptTrip, startTrip, completeTrip, cancelTrip } = useTrips();
+  const { subscribed, planType, refreshSubscription } = useDriverSubscription();
+
+  // Handle subscription success/cancel from URL params
+  useEffect(() => {
+    const subscriptionStatus = searchParams.get("subscription");
+    if (subscriptionStatus === "success") {
+      toast.success("تم الاشتراك بنجاح! مرحباً بك", {
+        icon: <CheckCircle2 className="w-5 h-5 text-green-500" />,
+      });
+      refreshSubscription();
+      searchParams.delete("subscription");
+      searchParams.delete("plan");
+      setSearchParams(searchParams);
+    } else if (subscriptionStatus === "cancelled") {
+      toast.info("تم إلغاء عملية الاشتراك");
+      searchParams.delete("subscription");
+      setSearchParams(searchParams);
+    }
+  }, [searchParams, setSearchParams, refreshSubscription]);
 
   // Real-time driver location tracking
   const { isTracking } = useDriverTracking({
@@ -438,6 +463,11 @@ const DriverApp = () => {
           </div>
         )}
 
+        {/* Subscription Section */}
+        <div className="mb-6">
+          <SubscriptionCard />
+        </div>
+
         {/* Wallet Section */}
         <div className="bg-gradient-to-br from-secondary to-taxi-navy-light text-secondary-foreground rounded-2xl p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -456,15 +486,17 @@ const DriverApp = () => {
           <div className="flex items-center justify-between text-sm">
             <div>
               <div className="text-secondary-foreground/70">الاشتراك</div>
-              <div className="font-medium">100 درهم</div>
+              <div className="font-medium">{subscribed && planType ? `${planType === 'basic' ? 100 : planType === 'premium' ? 150 : 200} درهم` : "غير مشترك"}</div>
             </div>
             <div className="text-center">
               <div className="text-secondary-foreground/70">العمليات</div>
-              <div className="font-medium">245 × 1 درهم</div>
+              <div className="font-medium">{profile?.total_trips || 0} × 1 درهم</div>
             </div>
             <div className="text-left">
               <div className="text-secondary-foreground/70">الحالة</div>
-              <div className="font-medium text-accent">{profile?.is_active ? "مفعّل" : "غير مفعّل"}</div>
+              <div className={`font-medium ${subscribed ? "text-accent" : "text-destructive"}`}>
+                {subscribed ? "مشترك" : "غير مشترك"}
+              </div>
             </div>
           </div>
         </div>

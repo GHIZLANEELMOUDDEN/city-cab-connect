@@ -2,3 +2,12 @@ project_id = "slgspsdbjjucuzrtgxtf"
 
 [functions.create-payment]
 verify_jwt = false
+
+[functions.create-driver-subscription]
+verify_jwt = false
+
+[functions.check-driver-subscription]
+verify_jwt = false
+
+[functions.driver-customer-portal]
+verify_jwt = false

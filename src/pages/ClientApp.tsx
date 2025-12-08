@@ -20,10 +20,8 @@ import {
   DollarSign,
   Route,
   Timer,
-  CreditCard,
-  CheckCircle2
 } from "lucide-react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LeafletMap from "@/components/map/LeafletMap";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
@@ -33,8 +31,6 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { calculatePriceEstimate, formatPrice, type PriceEstimate } from "@/lib/priceCalculator";
 import AddressSearch from "@/components/AddressSearch";
 import NotificationBell from "@/components/NotificationBell";
-import PaymentModal from "@/components/PaymentModal";
-import { toast } from "sonner";
 
 const ClientApp = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -44,12 +40,9 @@ const ClientApp = () => {
   const [isBooking, setIsBooking] = useState(false);
   const [showPriceEstimate, setShowPriceEstimate] = useState(false);
   const [priceEstimate, setPriceEstimate] = useState<PriceEstimate | null>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [completedTrip, setCompletedTrip] = useState<any>(null);
   
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { latitude, longitude, loading: gpsLoading, error: gpsError, refresh } = useGeoLocation();
   const { activeTrip, createTrip, cancelTrip, loading: tripsLoading } = useTrips();
   
@@ -66,24 +59,6 @@ const ClientApp = () => {
     userType: profile?.user_type || null,
   });
 
-  // Handle payment success/cancel from URL params
-  useEffect(() => {
-    const paymentStatus = searchParams.get("payment");
-    if (paymentStatus === "success") {
-      toast.success("تم الدفع بنجاح! شكراً لك", {
-        icon: <CheckCircle2 className="w-5 h-5 text-green-500" />,
-      });
-      // Clean up URL params
-      searchParams.delete("payment");
-      searchParams.delete("trip_id");
-      setSearchParams(searchParams);
-    } else if (paymentStatus === "cancelled") {
-      toast.info("تم إلغاء عملية الدفع");
-      searchParams.delete("payment");
-      searchParams.delete("trip_id");
-      setSearchParams(searchParams);
-    }
-  }, [searchParams, setSearchParams]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -410,20 +385,6 @@ const ClientApp = () => {
                 </div>
               )}
 
-              {/* Payment Button for in_progress trip */}
-              {activeTrip.status === "in_progress" && activeTrip.estimated_price && (
-                <Button 
-                  size="lg" 
-                  className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
-                  onClick={() => {
-                    setCompletedTrip(activeTrip);
-                    setShowPaymentModal(true);
-                  }}
-                >
-                  <CreditCard className="w-5 h-5 ml-2" />
-                  دفع الأجرة - {formatPrice(Number(activeTrip.estimated_price))}
-                </Button>
-              )}
 
               {/* Cancel Button (only for pending/accepted) */}
               {(activeTrip.status === "pending" || activeTrip.status === "accepted") && (
@@ -568,21 +529,6 @@ const ClientApp = () => {
         </div>
       </div>
 
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        onCashPayment={() => {
-          toast.success("تم اختيار الدفع نقداً");
-        }}
-        tripId={completedTrip?.id || activeTrip?.id || ""}
-        amount={completedTrip?.final_price || completedTrip?.estimated_price || activeTrip?.estimated_price || 0}
-        tripDetails={{
-          pickupAddress: completedTrip?.pickup_address || activeTrip?.pickup_address || "",
-          dropoffAddress: completedTrip?.dropoff_address || activeTrip?.dropoff_address || undefined,
-          distanceKm: completedTrip?.distance_km || activeTrip?.distance_km || undefined,
-        }}
-      />
     </div>
   );
 };
