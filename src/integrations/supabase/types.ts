@@ -234,7 +234,45 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      driver_public_info: {
+        Row: {
+          avatar_url: string | null
+          city: string | null
+          full_name: string | null
+          id: string | null
+          is_active: boolean | null
+          is_verified: boolean | null
+          rating: number | null
+          taxi_number: string | null
+          total_trips: number | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          city?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          rating?: number | null
+          taxi_number?: string | null
+          total_trips?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          city?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_verified?: boolean | null
+          rating?: number | null
+          taxi_number?: string | null
+          total_trips?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       is_active_trip_participant: {
