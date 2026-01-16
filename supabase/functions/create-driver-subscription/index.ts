@@ -130,7 +130,7 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${origin}/driver?subscription=success&plan=${planType}`,
+      success_url: `${origin}/subscription-success?plan=${planType}`,
       cancel_url: `${origin}/driver?subscription=cancelled`,
       metadata: {
         user_id: user.id,

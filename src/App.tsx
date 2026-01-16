@@ -13,6 +13,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import TripHistory from "./pages/TripHistory";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
+import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,14 @@ const App = () => (
               } 
             />
             <Route path="/about" element={<About />} />
+            <Route 
+              path="/subscription-success" 
+              element={
+                <ProtectedRoute allowedUserTypes={["driver"]}>
+                  <SubscriptionSuccess />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
