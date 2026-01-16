@@ -14,6 +14,7 @@ import TripHistory from "./pages/TripHistory";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
+import SubscriptionCancelled from "./pages/SubscriptionCancelled";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedUserTypes={["driver"]}>
                   <SubscriptionSuccess />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/subscription-cancelled" 
+              element={
+                <ProtectedRoute allowedUserTypes={["driver"]}>
+                  <SubscriptionCancelled />
                 </ProtectedRoute>
               } 
             />
