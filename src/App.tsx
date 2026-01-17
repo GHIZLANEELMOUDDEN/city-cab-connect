@@ -15,6 +15,7 @@ import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 import SubscriptionCancelled from "./pages/SubscriptionCancelled";
+import DriverDetails from "./pages/DriverDetails";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
               } 
             />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/driver/:driverId" element={<DriverDetails />} />
             <Route 
               path="/history" 
               element={

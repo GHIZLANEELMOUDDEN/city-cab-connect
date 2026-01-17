@@ -14,4 +14,7 @@ verify_jwt = false
 
 [functions.admin-stats]
 verify_jwt = false
+
+[functions.admin-driver]
+verify_jwt = false
 verify_jwt = false
