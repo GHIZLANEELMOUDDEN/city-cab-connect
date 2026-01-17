@@ -11,3 +11,7 @@ verify_jwt = false
 
 [functions.driver-customer-portal]
 verify_jwt = false
+
+[functions.admin-stats]
+verify_jwt = false
+verify_jwt = false
