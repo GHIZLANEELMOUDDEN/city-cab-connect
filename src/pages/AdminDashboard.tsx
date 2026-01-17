@@ -485,7 +485,13 @@ const AdminDashboard = () => {
                                 ) : "-"}
                               </td>
                               <td className="p-4">
-                                <Button variant="ghost" size="sm">تفاصيل</Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => navigate(`/admin/driver/${driver.user_id}`)}
+                                >
+                                  تفاصيل
+                                </Button>
                               </td>
                             </tr>
                           ))
