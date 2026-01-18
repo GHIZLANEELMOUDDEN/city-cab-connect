@@ -124,6 +124,59 @@ export type Database = {
           },
         ]
       }
+      lost_and_found: {
+        Row: {
+          contact_phone: string | null
+          created_at: string
+          description: string
+          driver_id: string | null
+          found_by_driver: boolean | null
+          id: string
+          image_url: string | null
+          item_type: string
+          reporter_id: string
+          status: string | null
+          trip_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_phone?: string | null
+          created_at?: string
+          description: string
+          driver_id?: string | null
+          found_by_driver?: boolean | null
+          id?: string
+          image_url?: string | null
+          item_type: string
+          reporter_id: string
+          status?: string | null
+          trip_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_phone?: string | null
+          created_at?: string
+          description?: string
+          driver_id?: string | null
+          found_by_driver?: boolean | null
+          id?: string
+          image_url?: string | null
+          item_type?: string
+          reporter_id?: string
+          status?: string | null
+          trip_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lost_and_found_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -135,6 +188,7 @@ export type Database = {
           is_verified: boolean | null
           phone: string | null
           rating: number | null
+          taxi_image_url: string | null
           taxi_number: string | null
           total_trips: number | null
           updated_at: string
@@ -151,6 +205,7 @@ export type Database = {
           is_verified?: boolean | null
           phone?: string | null
           rating?: number | null
+          taxi_image_url?: string | null
           taxi_number?: string | null
           total_trips?: number | null
           updated_at?: string
@@ -167,6 +222,7 @@ export type Database = {
           is_verified?: boolean | null
           phone?: string | null
           rating?: number | null
+          taxi_image_url?: string | null
           taxi_number?: string | null
           total_trips?: number | null
           updated_at?: string

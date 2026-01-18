@@ -16,6 +16,10 @@ import NotFound from "./pages/NotFound";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 import SubscriptionCancelled from "./pages/SubscriptionCancelled";
 import DriverDetails from "./pages/DriverDetails";
+import LostAndFound from "./pages/LostAndFound";
+import DriverProfile from "./pages/DriverProfile";
+import AdminReports from "./pages/AdminReports";
+import Notifications from "./pages/Notifications";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +51,31 @@ const App = () => (
             />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/driver/:driverId" element={<DriverDetails />} />
+            <Route path="/admin/reports" element={<AdminReports />} />
+            <Route 
+              path="/lost-and-found" 
+              element={
+                <ProtectedRoute allowedUserTypes={["client", "driver"]}>
+                  <LostAndFound />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/driver/profile" 
+              element={
+                <ProtectedRoute allowedUserTypes={["driver"]}>
+                  <DriverProfile />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/notifications" 
+              element={
+                <ProtectedRoute allowedUserTypes={["client", "driver"]}>
+                  <Notifications />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/history" 
               element={

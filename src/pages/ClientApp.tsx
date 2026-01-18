@@ -250,6 +250,14 @@ const ClientApp = () => {
                 <History className="w-5 h-5 text-muted-foreground" />
                 <span>سجل الرحلات</span>
               </Link>
+              <Link to="/lost-and-found" className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors">
+                <HelpCircle className="w-5 h-5 text-muted-foreground" />
+                <span>المفقودات</span>
+              </Link>
+              <Link to="/notifications" className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors">
+                <Clock className="w-5 h-5 text-muted-foreground" />
+                <span>الإشعارات</span>
+              </Link>
               <Link to="/about" className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors">
                 <HelpCircle className="w-5 h-5 text-muted-foreground" />
                 <span>حول التطبيق</span>
