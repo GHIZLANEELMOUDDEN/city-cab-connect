@@ -44,6 +44,41 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean | null
+          message: string
+          sender_id: string
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message: string
+          sender_id: string
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          sender_id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_subscriptions: {
         Row: {
           created_at: string
@@ -170,6 +205,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "lost_and_found_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_records: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          driver_id: string | null
+          id: string
+          payment_method: string
+          status: string
+          stripe_payment_id: string | null
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          driver_id?: string | null
+          id?: string
+          payment_method?: string
+          status?: string
+          stripe_payment_id?: string | null
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          driver_id?: string | null
+          id?: string
+          payment_method?: string
+          status?: string
+          stripe_payment_id?: string | null
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_records_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
