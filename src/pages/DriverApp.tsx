@@ -32,10 +32,12 @@ import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { useTrips } from "@/hooks/useTrips";
 import { useDriverTracking } from "@/hooks/useDriverTracking";
 import { useNotifications } from "@/hooks/useNotifications";
+import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";
 import NotificationBell from "@/components/NotificationBell";
 import SubscriptionCard from "@/components/driver/SubscriptionCard";
 import { useDriverSubscription } from "@/hooks/useDriverSubscription";
 import { toast } from "sonner";
+import TripChat from "@/components/TripChat";
 
 const DriverApp = () => {
   const [isOnline, setIsOnline] = useState(true);
@@ -77,6 +79,9 @@ const DriverApp = () => {
     userId: user?.id || null,
     userType: profile?.user_type || null,
   });
+
+  // Payment notifications
+  usePaymentNotifications({ enabled: true });
 
   const stats = {
     todayTrips: 12,
@@ -297,9 +302,21 @@ const DriverApp = () => {
         {/* Active Trip Card */}
         {activeTrip && (
           <div className="bg-accent/10 border-2 border-accent rounded-2xl p-4 mb-6 animate-scale-in">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-3 h-3 bg-accent rounded-full animate-pulse" />
-              <span className="font-bold text-accent">{getStatusText(activeTrip.status)}</span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-accent rounded-full animate-pulse" />
+                <span className="font-bold text-accent">{getStatusText(activeTrip.status)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Phone className="w-4 h-4" />
+                </Button>
+                <TripChat 
+                  tripId={activeTrip.id} 
+                  otherPartyName="الزبون"
+                  disabled={false}
+                />
+              </div>
             </div>
 
             <div className="bg-card rounded-xl p-3 mb-4">

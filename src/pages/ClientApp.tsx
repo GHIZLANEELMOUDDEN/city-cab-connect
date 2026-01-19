@@ -28,9 +28,13 @@ import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { useTrips } from "@/hooks/useTrips";
 import { useDriverTracking } from "@/hooks/useDriverTracking";
 import { useNotifications } from "@/hooks/useNotifications";
+import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";
 import { calculatePriceEstimate, formatPrice, type PriceEstimate } from "@/lib/priceCalculator";
 import AddressSearch from "@/components/AddressSearch";
 import NotificationBell from "@/components/NotificationBell";
+import TripChat from "@/components/TripChat";
+import TripRatingModal from "@/components/TripRatingModal";
+import PaymentSuccessToast from "@/components/PaymentSuccessToast";
 
 const ClientApp = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -58,6 +62,24 @@ const ClientApp = () => {
     userId: user?.id || null,
     userType: profile?.user_type || null,
   });
+
+  // Payment notifications
+  usePaymentNotifications({ enabled: true });
+
+  // Rating modal state
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [completedTripForRating, setCompletedTripForRating] = useState<{
+    id: string;
+    driverId: string | null;
+  } | null>(null);
+
+  // Check for completed trip to show rating
+  useEffect(() => {
+    if (activeTrip === null && !showRatingModal) {
+      // Check if there's a recently completed trip that needs rating
+      // This would normally come from a state change
+    }
+  }, [activeTrip, showRatingModal]);
 
 
   const handleSignOut = async () => {
@@ -385,9 +407,11 @@ const ClientApp = () => {
                       <Button variant="ghost" size="icon" className="h-10 w-10">
                         <Phone className="w-5 h-5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-10 w-10">
-                        <MessageCircle className="w-5 h-5" />
-                      </Button>
+                      <TripChat 
+                        tripId={activeTrip.id} 
+                        otherPartyName="السائق"
+                        disabled={false}
+                      />
                     </div>
                   </div>
                 </div>
@@ -537,6 +561,21 @@ const ClientApp = () => {
         </div>
       </div>
 
+      {/* Payment Success Toast Handler */}
+      <PaymentSuccessToast />
+
+      {/* Rating Modal */}
+      {completedTripForRating && (
+        <TripRatingModal
+          isOpen={showRatingModal}
+          onClose={() => {
+            setShowRatingModal(false);
+            setCompletedTripForRating(null);
+          }}
+          tripId={completedTripForRating.id}
+          driverId={completedTripForRating.driverId}
+        />
+      )}
     </div>
   );
 };
