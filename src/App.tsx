@@ -20,6 +20,7 @@ import LostAndFound from "./pages/LostAndFound";
 import DriverProfile from "./pages/DriverProfile";
 import AdminReports from "./pages/AdminReports";
 import Notifications from "./pages/Notifications";
+import ChatHistory from "./pages/ChatHistory";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedUserTypes={["client", "driver"]}>
                   <TripHistory />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/chat-history" 
+              element={
+                <ProtectedRoute allowedUserTypes={["client", "driver"]}>
+                  <ChatHistory />
                 </ProtectedRoute>
               } 
             />
