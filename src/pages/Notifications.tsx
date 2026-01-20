@@ -12,11 +12,13 @@ import {
   Info,
   CheckCheck,
   Trash2,
-  Loader2
+  Loader2,
+  MessageCircle
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format, formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
+import NotificationSettings from "@/components/NotificationSettings";
 
 const Notifications = () => {
   const { user, profile } = useAuth();
@@ -105,6 +107,25 @@ const Notifications = () => {
       </header>
 
       <main className="p-4 space-y-4">
+        {/* Notification Settings */}
+        <NotificationSettings />
+
+        {/* Chat History Link */}
+        <Link to="/chat-history">
+          <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <MessageCircle className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium">سجل المحادثات</h3>
+                <p className="text-sm text-muted-foreground">عرض جميع المحادثات السابقة</p>
+              </div>
+              <ArrowRight className="w-5 h-5 text-muted-foreground rotate-180" />
+            </CardContent>
+          </Card>
+        </Link>
+
         {/* Filter Tabs */}
         <div className="flex gap-2">
           <Button
