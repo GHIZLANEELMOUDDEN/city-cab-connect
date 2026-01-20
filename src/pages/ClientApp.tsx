@@ -28,14 +28,11 @@ import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { useTrips } from "@/hooks/useTrips";
 import { useDriverTracking } from "@/hooks/useDriverTracking";
 import { useNotifications } from "@/hooks/useNotifications";
-import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";
 import { calculatePriceEstimate, formatPrice, type PriceEstimate } from "@/lib/priceCalculator";
 import AddressSearch from "@/components/AddressSearch";
 import NotificationBell from "@/components/NotificationBell";
 import TripChat from "@/components/TripChat";
 import TripRatingModal from "@/components/TripRatingModal";
-import PaymentSuccessToast from "@/components/PaymentSuccessToast";
-import PaymentModal from "@/components/PaymentModal";
 
 const ClientApp = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -45,15 +42,6 @@ const ClientApp = () => {
   const [isBooking, setIsBooking] = useState(false);
   const [showPriceEstimate, setShowPriceEstimate] = useState(false);
   const [priceEstimate, setPriceEstimate] = useState<PriceEstimate | null>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [tripForPayment, setTripForPayment] = useState<{
-    id: string;
-    amount: number;
-    pickupAddress: string;
-    dropoffAddress?: string;
-    distanceKm?: number;
-    driverId: string | null;
-  } | null>(null);
   
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
@@ -73,9 +61,6 @@ const ClientApp = () => {
     userType: profile?.user_type || null,
   });
 
-  // Payment notifications
-  usePaymentNotifications({ enabled: true });
-
   // Rating modal state
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [completedTripForRating, setCompletedTripForRating] = useState<{
@@ -83,26 +68,21 @@ const ClientApp = () => {
     driverId: string | null;
   } | null>(null);
 
-  // Check for completed trip to show payment and rating
+  // Check for completed trip to show rating
   useEffect(() => {
     // Find recently completed trips that haven't been rated
     const recentlyCompleted = trips.find(
       t => t.status === "completed" && !t.rating && t.client_id === user?.id
     );
     
-    if (recentlyCompleted && !showPaymentModal && !showRatingModal) {
-      // Show payment modal first
-      setTripForPayment({
+    if (recentlyCompleted && !showRatingModal) {
+      setCompletedTripForRating({
         id: recentlyCompleted.id,
-        amount: Number(recentlyCompleted.final_price || recentlyCompleted.estimated_price || 0),
-        pickupAddress: recentlyCompleted.pickup_address,
-        dropoffAddress: recentlyCompleted.dropoff_address || undefined,
-        distanceKm: Number(recentlyCompleted.distance_km) || undefined,
         driverId: recentlyCompleted.driver_id,
       });
-      setShowPaymentModal(true);
+      setShowRatingModal(true);
     }
-  }, [trips, user?.id, showPaymentModal, showRatingModal]);
+  }, [trips, user?.id, showRatingModal]);
 
 
   const handleSignOut = async () => {
@@ -583,42 +563,6 @@ const ClientApp = () => {
           )}
         </div>
       </div>
-
-      {/* Payment Success Toast Handler */}
-      <PaymentSuccessToast />
-
-      {/* Payment Modal */}
-      {tripForPayment && (
-        <PaymentModal
-          isOpen={showPaymentModal}
-          onClose={() => {
-            setShowPaymentModal(false);
-            // After payment modal closes, show rating
-            setCompletedTripForRating({
-              id: tripForPayment.id,
-              driverId: tripForPayment.driverId,
-            });
-            setShowRatingModal(true);
-            setTripForPayment(null);
-          }}
-          onCashPayment={() => {
-            // After cash payment, show rating
-            setCompletedTripForRating({
-              id: tripForPayment.id,
-              driverId: tripForPayment.driverId,
-            });
-            setShowRatingModal(true);
-            setTripForPayment(null);
-          }}
-          tripId={tripForPayment.id}
-          amount={tripForPayment.amount}
-          tripDetails={{
-            pickupAddress: tripForPayment.pickupAddress,
-            dropoffAddress: tripForPayment.dropoffAddress,
-            distanceKm: tripForPayment.distanceKm,
-          }}
-        />
-      )}
 
       {/* Rating Modal */}
       {completedTripForRating && (
