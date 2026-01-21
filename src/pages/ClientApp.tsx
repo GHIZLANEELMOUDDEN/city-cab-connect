@@ -28,11 +28,13 @@ import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { useTrips } from "@/hooks/useTrips";
 import { useDriverTracking } from "@/hooks/useDriverTracking";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useCoupons } from "@/hooks/useCoupons";
 import { calculatePriceEstimate, formatPrice, type PriceEstimate } from "@/lib/priceCalculator";
 import AddressSearch from "@/components/AddressSearch";
 import NotificationBell from "@/components/NotificationBell";
 import TripChat from "@/components/TripChat";
 import TripRatingModal from "@/components/TripRatingModal";
+import CouponInput from "@/components/CouponInput";
 
 const ClientApp = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -42,6 +44,9 @@ const ClientApp = () => {
   const [isBooking, setIsBooking] = useState(false);
   const [showPriceEstimate, setShowPriceEstimate] = useState(false);
   const [priceEstimate, setPriceEstimate] = useState<PriceEstimate | null>(null);
+  
+  // Coupon system
+  const { appliedCoupon, applyCoupon, clearCoupon, calculateDiscount, getFinalPrice, loading: couponLoading } = useCoupons();
   
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
@@ -166,6 +171,12 @@ const ClientApp = () => {
     }
 
     setIsBooking(true);
+    
+    // Calculate final price with coupon discount
+    const finalEstimatedPrice = priceEstimate 
+      ? (appliedCoupon ? getFinalPrice(priceEstimate.totalFare) : priceEstimate.totalFare)
+      : undefined;
+    
     const trip = await createTrip({
       pickup_address: pickupAddress || "موقعي الحالي",
       pickup_lat: latitude,
@@ -173,7 +184,7 @@ const ClientApp = () => {
       dropoff_address: dropoffAddress || undefined,
       dropoff_lat: dropoffCoords?.lat,
       dropoff_lng: dropoffCoords?.lng,
-      estimated_price: priceEstimate?.totalFare,
+      estimated_price: finalEstimatedPrice,
       distance_km: priceEstimate?.distanceKm,
     });
     setIsBooking(false);
@@ -183,6 +194,7 @@ const ClientApp = () => {
       setDropoffAddress("");
       setDropoffCoords(null);
       setShowPriceEstimate(false);
+      clearCoupon(); // Clear coupon after booking
     }
   };
 
@@ -477,10 +489,30 @@ const ClientApp = () => {
                       <span className="text-muted-foreground">أجرة الوقت (~{priceEstimate.estimatedMinutes} د)</span>
                       <span>{formatPrice(priceEstimate.timeFare)}</span>
                     </div>
+                    {appliedCoupon && (
+                      <div className="flex justify-between text-accent">
+                        <span>الخصم ({appliedCoupon.code})</span>
+                        <span>-{formatPrice(calculateDiscount(priceEstimate.totalFare))}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-bold pt-2 border-t border-border/50">
                       <span>الإجمالي التقديري</span>
-                      <span className="text-primary">{formatPrice(priceEstimate.totalFare)}</span>
+                      <span className="text-primary">
+                        {formatPrice(appliedCoupon ? getFinalPrice(priceEstimate.totalFare) : priceEstimate.totalFare)}
+                      </span>
                     </div>
+                  </div>
+                  
+                  {/* Coupon Input */}
+                  <div className="mt-3 pt-3 border-t border-border/50">
+                    <CouponInput
+                      orderAmount={priceEstimate.totalFare}
+                      onApply={applyCoupon}
+                      onClear={clearCoupon}
+                      appliedCode={appliedCoupon?.code}
+                      loading={couponLoading}
+                      discount={appliedCoupon ? calculateDiscount(priceEstimate.totalFare) : 0}
+                    />
                   </div>
                   
                   <p className="text-xs text-muted-foreground mt-3 text-center">

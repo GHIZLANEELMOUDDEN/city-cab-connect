@@ -20,6 +20,7 @@ export interface Trip {
   final_price: number | null;
   distance_km: number | null;
   rating: number | null;
+  client_rating: number | null;
   client_note: string | null;
   driver_note: string | null;
   accepted_at: string | null;
