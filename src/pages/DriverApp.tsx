@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Car,
@@ -23,7 +23,8 @@ import {
   History,
   Info,
   CreditCard,
-  CheckCircle2
+  CheckCircle2,
+  Package
 } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,11 +34,13 @@ import { useTrips } from "@/hooks/useTrips";
 import { useDriverTracking } from "@/hooks/useDriverTracking";
 import { useNotifications } from "@/hooks/useNotifications";
 import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";
+import { useSoundNotifications } from "@/hooks/useSoundNotifications";
 import NotificationBell from "@/components/NotificationBell";
 import SubscriptionCard from "@/components/driver/SubscriptionCard";
 import { useDriverSubscription } from "@/hooks/useDriverSubscription";
 import { toast } from "sonner";
 import TripChat from "@/components/TripChat";
+import ClientRatingModal from "@/components/ClientRatingModal";
 
 const DriverApp = () => {
   const [isOnline, setIsOnline] = useState(true);
@@ -46,8 +49,19 @@ const DriverApp = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { latitude, longitude, loading, error, refresh } = useGeoLocation();
-  const { pendingTrips, activeTrip, acceptTrip, startTrip, completeTrip, cancelTrip } = useTrips();
+  const { pendingTrips, activeTrip, trips, acceptTrip, startTrip, completeTrip, cancelTrip } = useTrips();
   const { subscribed, planType, refreshSubscription } = useDriverSubscription();
+  const { playNewRequestSound, playSuccessSound } = useSoundNotifications({ enabled: true });
+  
+  // Track previous pending trips count for sound notifications
+  const prevPendingCountRef = useRef(pendingTrips.length);
+  
+  // Client rating modal state
+  const [showClientRatingModal, setShowClientRatingModal] = useState(false);
+  const [completedTripForRating, setCompletedTripForRating] = useState<{
+    id: string;
+    clientId: string | null;
+  } | null>(null);
 
   // Handle subscription success/cancel from URL params
   useEffect(() => {
@@ -67,6 +81,29 @@ const DriverApp = () => {
     }
   }, [searchParams, setSearchParams, refreshSubscription]);
 
+  // Sound notification when new pending trips arrive
+  useEffect(() => {
+    if (pendingTrips.length > prevPendingCountRef.current && isOnline && !activeTrip) {
+      playNewRequestSound();
+    }
+    prevPendingCountRef.current = pendingTrips.length;
+  }, [pendingTrips.length, isOnline, activeTrip, playNewRequestSound]);
+
+  // Check for completed trip to show client rating modal
+  useEffect(() => {
+    const recentlyCompleted = trips.find(
+      t => t.status === "completed" && !t.client_rating && t.driver_id === user?.id
+    );
+    
+    if (recentlyCompleted && !showClientRatingModal) {
+      setCompletedTripForRating({
+        id: recentlyCompleted.id,
+        clientId: recentlyCompleted.client_id,
+      });
+      setShowClientRatingModal(true);
+    }
+  }, [trips, user?.id, showClientRatingModal]);
+
   // Real-time driver location tracking
   const { isTracking } = useDriverTracking({
     tripId: activeTrip?.id || null,
@@ -79,9 +116,6 @@ const DriverApp = () => {
     userId: user?.id || null,
     userType: profile?.user_type || null,
   });
-
-  // Payment notifications
-  usePaymentNotifications({ enabled: true });
 
   const stats = {
     todayTrips: 12,
@@ -519,7 +553,7 @@ const DriverApp = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-4 gap-4 mb-4">
           <button className="flex flex-col items-center gap-2 p-3">
             <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
               <BarChart3 className="w-6 h-6 text-primary" />
@@ -532,20 +566,33 @@ const DriverApp = () => {
             </div>
             <span className="text-xs text-muted-foreground">السجل</span>
           </Link>
-          <Link to="/about" className="flex flex-col items-center gap-2 p-3">
-            <div className="w-12 h-12 bg-secondary/20 rounded-2xl flex items-center justify-center">
-              <Info className="w-6 h-6 text-secondary" />
+          <Link to="/lost-and-found" className="flex flex-col items-center gap-2 p-3">
+            <div className="w-12 h-12 bg-orange-500/10 rounded-2xl flex items-center justify-center">
+              <Package className="w-6 h-6 text-orange-500" />
             </div>
-            <span className="text-xs text-muted-foreground">حول</span>
+            <span className="text-xs text-muted-foreground">المفقودات</span>
           </Link>
-          <button className="flex flex-col items-center gap-2 p-3">
+          <Link to="/driver/profile" className="flex flex-col items-center gap-2 p-3">
             <div className="w-12 h-12 bg-muted rounded-2xl flex items-center justify-center">
               <Settings className="w-6 h-6 text-muted-foreground" />
             </div>
             <span className="text-xs text-muted-foreground">الإعدادات</span>
-          </button>
+          </Link>
         </div>
       </main>
+
+      {/* Client Rating Modal */}
+      {completedTripForRating && (
+        <ClientRatingModal
+          isOpen={showClientRatingModal}
+          onClose={() => {
+            setShowClientRatingModal(false);
+            setCompletedTripForRating(null);
+          }}
+          tripId={completedTripForRating.id}
+          clientId={completedTripForRating.clientId}
+        />
+      )}
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border">
